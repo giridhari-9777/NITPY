@@ -38,11 +38,46 @@ _collection = None
 _emb_model  = None
 
 
+
+def _ensure_chroma_extracted():
+    """If chroma_db is missing or empty, automatically extract from chroma_db_archive parts."""
+    chroma_path = os.path.join(ROOT, "chroma_db")
+    sqlite_path = os.path.join(chroma_path, "chroma.sqlite3")
+
+    if os.path.exists(sqlite_path) and os.path.getsize(sqlite_path) > 10 * 1024 * 1024:
+        return
+
+    archive_dir = os.path.join(ROOT, "chroma_db_archive")
+    if not os.path.exists(archive_dir):
+        return
+
+    import glob, tarfile, io
+    part_files = sorted(glob.glob(os.path.join(archive_dir, "chroma_db.tar.gz.part_*")))
+    if not part_files:
+        return
+
+    print(f"Extracting ChromaDB ({len(part_files)} parts) into {ROOT}...")
+    try:
+        combined_bytes = bytearray()
+        for p in part_files:
+            with open(p, "rb") as f:
+                combined_bytes.extend(f.read())
+
+        bio = io.BytesIO(combined_bytes)
+        with tarfile.open(fileobj=bio, mode="r:gz") as tar:
+            tar.extractall(path=ROOT)
+        print("ChromaDB extracted successfully!")
+    except Exception as e:
+        print(f"ChromaDB extraction error: {e}")
+
+
 def _load_chroma():
     """Load ChromaDB (lazy — only once)."""
     global _chroma, _collection
     if _collection is not None:
         return _collection
+
+    _ensure_chroma_extracted()
 
     import chromadb
     try:
