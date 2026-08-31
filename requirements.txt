@@ -1,0 +1,12 @@
+streamlit
+chromadb
+sentence-transformers
+requests
+numpy
+torch
+transformers
+nltk
+rouge-score
+bert-score
+groq
+python-dotenv

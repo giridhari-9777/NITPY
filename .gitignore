@@ -1,0 +1,34 @@
+# Virtual environments
+.venv/
+.venv*/
+venv/
+env/
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ChromaDB & chat history
+chroma_db/
+chat_histories/
+
+# Environment variables & secrets
+.env
+.env.*
+
+# Logs
+*.log
+
+# Large data and output folders (keep repo under GitHub limits)
+data/
+outputs/
+results/
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes

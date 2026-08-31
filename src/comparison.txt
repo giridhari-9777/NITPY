@@ -1,0 +1,508 @@
+
+============================================================
+  ONCOLOGY RAG - COMPLETE EVALUATION REPORT
+  LLM Only (No RAG, No RL) — Baseline ✅
+============================================================
+  Questions evaluated : 200
+  Avg agent iters     : 0.0
+  Avg confidence      : 0.807
+  SCOPE method        : Llama3_Med42_8B_judge
+
+  -- Retrieval Quality (k=5) --------------------------------
+  Precision@5         : 0.0  ← No retrieval
+  Recall@5            : 0.0
+  MRR                 : 0.0
+  NDCG@5              : 0.0
+  Hit-Rate@5          : 0.0
+  Avg rerank score    : 0.0
+
+  -- Generation Lexical --------------------------------------
+  BLEU-1              : 0.1509
+  BLEU-2              : 0.0824
+  BLEU-4              : 0.031
+  GLEU                : 0.0975
+  ROUGE-1             : 0.2747
+  ROUGE-2             : 0.0988
+  ROUGE-L             : 0.2006
+  ROUGE-Lsum          : 0.2014
+  METEOR              : 0.3937
+  Answer F1           : 0.2456
+
+  -- Generation Semantic -------------------------------------
+  BERTScore F1        : 0.8163
+  BERTScore Precision : 0.7767
+  BERTScore Recall    : 0.8611
+
+  -- Faithfulness & Relevance --------------------------------
+  Faithfulness(LLM)   : 0.6437  ← Reduced!
+  Context Relevancy   : 0.0  ← No context!
+  Answer relevance    : 0.807
+
+  -- S.C.O.P.E LLM-as-judge (/5.0) --------------------------
+  S Safety            : 4.6
+  C Completeness      : 4.64
+  O Originality       : 4.12
+  P Precision         : 2.9
+  E Efficiency        : 4.6
+  Weighted Total      : 4.17/5.00  (std=0.14)
+============================================================
+
+  -- Score by Category ---------------------------------------
+  surgery                   : 4.26
+  investigation             : 4.25
+  pathology                 : 4.25
+  staging                   : 4.23
+  general                   : 4.22
+  prognosis                 : 4.2
+  clinical_features         : 4.2
+  treatment                 : 4.19
+  mechanism                 : 4.19
+  diagnosis                 : 4.15
+  epidemiology              : 4.15
+  biomarker                 : 4.11
+  side_effects              : 4.11
+  etiology                  : 3.79
+
+  -- Score by Difficulty -------------------------------------
+  moderate                  : 4.18
+  simple                    : 4.17
+  complex                   : 4.17
+============================================================
+
+
+
+
+
+
+============================================================
+  ONCOLOGY RAG - COMPLETE EVALUATION REPORT
+  MRL + Agentic RAG    [MODE: WITHOUT RL]  ✅
+============================================================
+  Questions evaluated : 200
+  Avg agent iters     : 0.36
+  Avg confidence      : 0.799
+  SCOPE method        : Llama3_Med42_8B_judge
+
+  -- Retrieval Quality (k=5) --------------------------------
+  Precision@5         : 0.998
+  Recall@5            : 0.998
+  MRR                 : 1.0
+  NDCG@5              : 1.0
+  Hit-Rate@5          : 1.0
+  Avg rerank score    : 0.9267
+
+  -- Generation Lexical --------------------------------------
+  BLEU-1              : 0.1958
+  BLEU-2              : 0.1219
+  BLEU-4              : 0.0607
+  GLEU                : 0.139
+  ROUGE-1             : 0.3331
+  ROUGE-2             : 0.1582
+  ROUGE-L             : 0.2629
+  ROUGE-Lsum          : 0.2614
+  METEOR              : 0.428
+  Answer F1           : 0.2957
+
+  -- Generation Semantic -------------------------------------
+  BERTScore F1        : 0.8286
+  BERTScore Precision : 0.792
+  BERTScore Recall    : 0.8698
+
+  -- Faithfulness & Relevance --------------------------------
+  Faithfulness(LLM)   : 0.73
+  Context Relevancy   : 0.9682
+  Answer relevance    : 0.7986
+
+  -- S.C.O.P.E LLM-as-judge (/5.0) --------------------------
+  S Safety            : 5.0
+  C Completeness      : 4.59
+  O Originality       : 4.64
+  P Precision         : 4.01
+  E Efficiency        : 4.52
+  Weighted Total      : 4.58/5.00  (std=0.2)
+============================================================
+
+
+
+
+
+============================================================
+  ONCOLOGY RAG - COMPLETE EVALUATION REPORT
+  MRL + Agentic RAG  [MODE: WITH RL]    ✅
+============================================================
+  Questions evaluated : 200
+  Avg agent iters     : 0.36
+  Avg confidence      : 0.806
+  SCOPE method        : Llama3_Med42_8B_judge
+
+  -- RL Reward Components ------------------------------------
+  Avg Total Reward        : 0.9577
+  Max Reward              : 1.0
+  Min Reward              : 0.8997
+  Std Reward              : 0.0184
+
+  -- 5 Reward Scores -----------------------------------------
+  Safety Reward           : 0.9058
+  Hallucination Reward    : 0.9686
+  Out of Context Reward   : 0.9777
+  Embedding Reward        : 0.9611
+  Grounding Reward        : 0.9699
+
+  -- Retrieval Quality (k=5) --------------------------------
+  Precision@5         : 0.999
+  Recall@5            : 0.9196
+  MRR                 : 1.0
+  NDCG@5              : 1.0
+  Hit-Rate@5          : 1.0
+  Avg rerank score    : 0.9326
+
+  -- Generation Lexical --------------------------------------
+  BLEU-1              : 0.1985
+  BLEU-2              : 0.1242
+  BLEU-4              : 0.0621
+  GLEU                : 0.1415
+  ROUGE-1             : 0.3347
+  ROUGE-2             : 0.1602
+  ROUGE-L             : 0.265
+  ROUGE-Lsum          : 0.2637
+  METEOR              : 0.0
+  Answer F1           : 0.2972
+
+  -- Generation Semantic -------------------------------------
+  BERTScore F1        : 0.8276
+  BERTScore Precision : 0.7915
+  BERTScore Recall    : 0.8682
+
+  -- Faithfulness & Relevance --------------------------------
+  Faithfulness(LLM)   : 0.9699
+  Context Relevancy   : 0.9681
+  Answer relevance    : 0.806
+
+  -- S.C.O.P.E LLM-as-judge (/5.0) --------------------------
+  S Safety            : 5.0
+  C Completeness      : 4.63
+  O Originality       : 4.68
+  P Precision         : 4.01
+  E Efficiency        : 4.5
+  Weighted Total      : 4.6/5.00  (std=0.16)
+============================================================
+
+
+
+
+
+
+============================================================
+  ONCOLOGY RAG - COMPLETE EVALUATION REPORT
+  MRL + Agentic RAG  [LLM: MISTRAL]   ✅
+============================================================
+  Questions evaluated : 200
+  LLM Model           : mistral
+  Avg agent iters     : 0.36
+  Avg confidence      : 0.821
+  SCOPE method        : Llama3_Med42_8B_judge
+
+  -- Retrieval Quality (k=5) --------------------------------
+  Precision@5         : 0.998
+  Recall@5            : 0.998
+  MRR                 : 1.0
+  NDCG@5              : 1.0
+  Hit-Rate@5          : 1.0
+  Avg rerank score    : 0.9267
+
+  -- Generation Lexical --------------------------------------
+  BLEU-1              : 0.1959
+  BLEU-2              : 0.1261
+  BLEU-4              : 0.0666
+  GLEU                : 0.1417
+  ROUGE-1             : 0.3366
+  ROUGE-2             : 0.1626
+  ROUGE-L             : 0.2652
+  ROUGE-Lsum          : 0.2653
+  METEOR              : 0.4423
+  Answer F1           : 0.2992
+
+  -- Generation Semantic -------------------------------------
+  BERTScore F1        : 0.8316
+  BERTScore Precision : 0.7913
+  BERTScore Recall    : 0.8772
+
+  -- Faithfulness & Relevance --------------------------------
+  Faithfulness(LLM)   : 0.9754
+  Context Relevancy   : 0.9689
+  Answer relevance    : 0.8214
+
+  -- S.C.O.P.E LLM-as-judge (/5.0) --------------------------
+  S Safety            : 5.0
+  C Completeness      : 4.71
+  O Originality       : 4.67
+  P Precision         : 4.09
+  E Efficiency        : 4.48
+  Weighted Total      : 4.63/5.00  (std=0.13)
+============================================================
+
+
+
+
+
+
+
+
+
+
+============================================================
+  ONCOLOGY RAG - COMPLETE EVALUATION REPORT
+  MRL + Agentic RAG  [LLM: GEMMA3]      ✅ 
+============================================================
+  Questions evaluated : 200
+  LLM Model           : gemma3
+  Avg agent iters     : 0.36
+  Avg confidence      : 0.76
+  SCOPE method        : Llama3_Med42_8B_judge
+
+  -- Retrieval Quality (k=5) --------------------------------
+  Precision@5         : 0.998
+  Recall@5            : 0.998
+  MRR                 : 1.0
+  NDCG@5              : 1.0
+  Hit-Rate@5          : 1.0
+  Avg rerank score    : 0.9267
+
+  -- Generation Lexical --------------------------------------
+  BLEU-1              : 0.1606
+  BLEU-2              : 0.0898
+  BLEU-4              : 0.0404
+  GLEU                : 0.1068
+  ROUGE-1             : 0.2876
+  ROUGE-2             : 0.116
+  ROUGE-L             : 0.2174
+  ROUGE-Lsum          : 0.2174
+  METEOR              : 0.3861
+  Answer F1           : 0.2485
+
+  -- Generation Semantic -------------------------------------
+  BERTScore F1        : 0.8204
+  BERTScore Precision : 0.783
+  BERTScore Recall    : 0.8625
+
+  -- Faithfulness & Relevance --------------------------------
+  Faithfulness(LLM)   : 0.9732
+  Context Relevancy   : 0.9685
+  Answer relevance    : 0.7603
+
+  -- S.C.O.P.E LLM-as-judge (/5.0) --------------------------
+  S Safety            : 5.0
+  C Completeness      : 4.4
+  O Originality       : 4.71
+  P Precision         : 4.07
+  E Efficiency        : 4.59
+  Weighted Total      : 4.56/5.00  (std=0.16)
+============================================================
+
+
+
+
+
+
+
+============================================================
+  ONCOLOGY RAG - COMPLETE EVALUATION REPORT
+  MRL + Agentic RAG  [LLM: QWEN2.5]
+============================================================
+  Questions evaluated : 200
+  LLM Model           : qwen2.5
+  Avg agent iters     : 0.36
+  Avg confidence      : 0.804
+  SCOPE method        : Llama3_Med42_8B_judge
+
+  -- Retrieval Quality (k=5) --------------------------------
+  Precision@5         : 0.998
+  Recall@5            : 0.998
+  MRR                 : 1.0
+  NDCG@5              : 1.0
+  Hit-Rate@5          : 1.0
+  Avg rerank score    : 0.9267
+
+  -- Generation Lexical --------------------------------------
+  BLEU-1              : 0.2167
+  BLEU-2              : 0.1327
+  BLEU-4              : 0.0674
+  GLEU                : 0.1518
+  ROUGE-1             : 0.36
+  ROUGE-2             : 0.1651
+  ROUGE-L             : 0.2815
+  ROUGE-Lsum          : 0.2815
+  METEOR              : 0.434
+  Answer F1           : 0.308
+
+  -- Generation Semantic -------------------------------------
+  BERTScore F1        : 0.8389
+  BERTScore Precision : 0.8052
+  BERTScore Recall    : 0.8765
+
+  -- Faithfulness & Relevance --------------------------------
+  Faithfulness(LLM)   : 0.9737
+  Context Relevancy   : 0.9686
+  Answer relevance    : 0.8041
+
+  -- S.C.O.P.E LLM-as-judge (/5.0) --------------------------
+  S Safety            : 5.0
+  C Completeness      : 4.63
+  O Originality       : 4.67
+  P Precision         : 4.06
+  E Efficiency        : 4.47
+  Weighted Total      : 4.6/5.00  (std=0.15)
+============================================================
+
+
+
+
+
+
+
+
+
+
+============================================================
+  ONCOLOGY RAG - COMPLETE EVALUATION REPORT
+  MRL + Agentic RAG  [LLM: DEEPSEEK-R1]
+============================================================
+  Questions evaluated : 200
+  LLM Model           : deepseek-r1
+  Avg agent iters     : 0.36
+  Avg confidence      : 0.391
+  SCOPE method        : Llama3_Med42_8B_judge
+
+  -- Retrieval Quality (k=5) --------------------------------
+  Precision@5         : 0.998
+  Recall@5            : 0.998
+  MRR                 : 1.0
+  NDCG@5              : 1.0
+  Hit-Rate@5          : 1.0
+  Avg rerank score    : 0.9267
+
+  -- Generation Lexical --------------------------------------
+  BLEU-1              : 0.1012
+  BLEU-2              : 0.0577
+  BLEU-4              : 0.0267
+  GLEU                : 0.0698
+  ROUGE-1             : 0.1684
+  ROUGE-2             : 0.0705
+  ROUGE-L             : 0.1295
+  ROUGE-Lsum          : 0.1297
+  METEOR              : 0.1784
+  Answer F1           : 0.1403
+
+  -- Generation Semantic -------------------------------------
+  BERTScore F1        : 0.4241
+  BERTScore Precision : 0.4129
+  BERTScore Recall    : 0.437
+
+  -- Faithfulness & Relevance --------------------------------
+  Faithfulness(LLM)   : 0.8842
+  Context Relevancy   : 0.9492
+  Answer relevance    : 0.391
+
+  -- S.C.O.P.E LLM-as-judge (/5.0) --------------------------
+  S Safety            : 5.0
+  C Completeness      : 2.76
+  O Originality       : 3.53
+  P Precision         : 2.43
+  E Efficiency        : 3.5
+  Weighted Total      : 3.48/5.00  (std=1.04)
+============================================================
+
+
+
+
+
+
+
+
+============================================================
+  ONCOLOGY RAG - COMPLETE EVALUATION REPORT
+  MRL + Agentic RAG  [LLM: PHI4]
+============================================================
+  Questions evaluated : 200
+  LLM Model           : phi4
+  Avg confidence      : 0.808
+  SCOPE method        : Llama3_Med42_8B_judge
+
+  -- Retrieval Quality (k=5) --------------------------------
+  Precision@5         : 0.998
+  Recall@5            : 0.998
+  MRR                 : 1.0
+  NDCG@5              : 1.0
+  Hit-Rate@5          : 1.0
+  Avg rerank score    : 0.9267
+
+  -- Generation Lexical --------------------------------------
+  BLEU-1              : 0.2054
+  BLEU-2              : 0.1244
+  BLEU-4              : 0.0585
+  GLEU                : 0.1418
+  ROUGE-1             : 0.3532
+  ROUGE-2             : 0.1573
+  ROUGE-L             : 0.2728
+  ROUGE-Lsum          : 0.272
+  METEOR              : 0.4444
+  Answer F1           : 0.3
+
+  -- Generation Semantic -------------------------------------
+  BERTScore F1        : 0.838
+  BERTScore Precision : 0.7994
+  BERTScore Recall    : 0.8815
+
+  -- Faithfulness & Relevance --------------------------------
+  Faithfulness(LLM)   : 0.9748
+  Context Relevancy   : 0.9689
+  Answer relevance    : 0.8077
+
+  -- S.C.O.P.E LLM-as-judge (/5.0) --------------------------
+  S Safety            : 5.0
+  C Completeness      : 4.64
+  O Originality       : 4.66
+  P Precision         : 4.09
+  E Efficiency        : 4.53
+  Weighted Total      : 4.61/5.00  (std=0.13)
+============================================================
+
+
+
+
+
+
+============================================================
+  SCOPE + HALLUCINATION  LLM-AS-JUDGE REPORT
+  Judge : thewindmom/llama3-med42-8b
+  N     : 200  |  2026-06-26T02:40:16
+============================================================
+
+  ── S.C.O.P.E. (/5.0) ──────────────────────────────────
+  Weighted Total  : 4.45  (±0.167)
+    Safety        : 4.00  (w=0.25)
+    Completeness  : 4.88  (w=0.25)
+    Originality   : 4.21  (w=0.2)
+    Precision     : 4.92  (w=0.2)
+    Efficiency    : 4.00  (w=0.1)
+
+  ── HALLUCINATION (/1.0) ────────────────────────────────
+  Hallucination Score     : 0.0663  (±0.0845)
+  Hallucination-Free Score: 0.9337
+    H1 Factual Grounding  : 0.9515  (w=0.25)
+    H2 Reference Alignment: 0.8810  (w=0.2)
+    H3 Numerical Claims   : 0.8055  (w=0.15)
+    H4 Medical Entities   : 1.0000  (w=0.15)
+    H5 Unsafe Claims      : 1.0000  (w=0.15)
+    H6 Context Faithfulness:0.9880  (w=0.1)
+
+  Risk Distribution → LOW: 90.0%  |  MEDIUM: 10.0%  |  HIGH: 0.0%
+============================================================
+
+
+
+
+
+
+
+
