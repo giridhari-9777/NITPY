@@ -43,7 +43,7 @@ _emb_model  = None
 
 
 def _ensure_chroma_extracted():
-    """If chroma_db is missing or empty, automatically extract from chroma_db_archive parts."""
+    """If chroma_db is missing or empty, stream-extract from chroma_db_archive with zero memory overhead."""
     chroma_path = os.path.join(ROOT, "chroma_db")
     sqlite_path = os.path.join(chroma_path, "chroma.sqlite3")
 
@@ -54,24 +54,34 @@ def _ensure_chroma_extracted():
     if not os.path.exists(archive_dir):
         return
 
-    import glob, tarfile, io
+    import glob, tarfile
     part_files = sorted(glob.glob(os.path.join(archive_dir, "chroma_db.tar.gz.part_*")))
     if not part_files:
         return
 
-    print(f"Extracting ChromaDB ({len(part_files)} parts) into {ROOT}...")
+    print(f"Extracting ChromaDB from {len(part_files)} archive parts (zero-memory stream)...")
+    temp_archive = os.path.join(ROOT, "temp_chroma_extract.tar.gz")
     try:
-        combined_bytes = bytearray()
-        for p in part_files:
-            with open(p, "rb") as f:
-                combined_bytes.extend(f.read())
+        with open(temp_archive, "wb") as out_f:
+            for p in part_files:
+                with open(p, "rb") as in_f:
+                    while True:
+                        chunk = in_f.read(65536)
+                        if not chunk:
+                            break
+                        out_f.write(chunk)
 
-        bio = io.BytesIO(combined_bytes)
-        with tarfile.open(fileobj=bio, mode="r:gz") as tar:
+        with tarfile.open(temp_archive, "r:gz") as tar:
             tar.extractall(path=ROOT)
         print("ChromaDB extracted successfully!")
     except Exception as e:
         print(f"ChromaDB extraction error: {e}")
+    finally:
+        if os.path.exists(temp_archive):
+            try:
+                os.remove(temp_archive)
+            except Exception:
+                pass
 
 
 def _load_chroma():

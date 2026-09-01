@@ -1,12 +1,10 @@
-streamlit
-chromadb
-sentence-transformers
-requests
-numpy
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch
 transformers
-nltk
-rouge-score
-bert-score
+sentence-transformers
+chromadb
+streamlit
+requests
+numpy
 groq
 python-dotenv
