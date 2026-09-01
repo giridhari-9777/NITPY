@@ -29,13 +29,7 @@ DEFAULT_MODEL = "llama3-8b-8192"
 
 def get_groq_key() -> str:
     """Get Groq API key from environment."""
-    key = os.environ.get("GROQ_API_KEY", "")
-    if not key:
-        raise ValueError(
-            "GROQ_API_KEY not set. "
-            "Add it to Render environment variables."
-        )
-    return key
+    return os.environ.get("GROQ_API_KEY", "").strip()
 
 
 def call_groq(
@@ -47,23 +41,17 @@ def call_groq(
 ) -> str:
     """
     Call Groq API — drop-in replacement for Ollama.
-
-    Args:
-        prompt      : User message
-        model       : Ollama model name (auto-mapped to Groq)
-        max_tokens  : Max response tokens
-        temperature : Generation temperature
-        system      : System prompt
-
-    Returns:
-        Generated text string
     """
 
-    # Map Ollama model name to Groq model name
+    key = get_groq_key()
+    if not key:
+        print("Warning: GROQ_API_KEY is not set.")
+        return ""
+
     groq_model = MODEL_MAP.get(model.lower(), DEFAULT_MODEL)
 
     headers = {
-        "Authorization" : f"Bearer {get_groq_key()}",
+        "Authorization" : f"Bearer {key}",
         "Content-Type"  : "application/json",
     }
 
@@ -146,13 +134,15 @@ def call_groq_chat(
 ) -> str:
     """
     Call Groq API with full message history.
-    messages = [{"role": "user/assistant/system", "content": "..."}]
     """
+    key = get_groq_key()
+    if not key:
+        return ""
 
     groq_model = MODEL_MAP.get(model.lower(), DEFAULT_MODEL)
 
     headers = {
-        "Authorization" : f"Bearer {get_groq_key()}",
+        "Authorization" : f"Bearer {key}",
         "Content-Type"  : "application/json",
     }
 
@@ -188,13 +178,3 @@ def call_groq_chat(
     except Exception as e:
         print(f"Groq chat failed: {e}")
         return ""
-
-
-# ── Test function ─────────────────────────────────────────────
-if __name__ == "__main__":
-    print("Testing Groq API...")
-    result = call_groq(
-        prompt = "What is lung cancer?",
-        model  = "llama3"
-    )
-    print(f"Response: {result[:200]}")
