@@ -1,10 +1,10 @@
 # src/ui.py
 # ============================================================
 # MedBot: Doctor-Patient Oncology AI Simulation
-# Supports:
-#   1. Patient Mode (User = Patient, AI = Doctor)
-#   2. Doctor Mode (User = Doctor, AI = Simulated Cancer Patient)
-#   3. Clinical Copilot (User = Doctor, AI = Oncology Specialist)
+# Features:
+#   1. Contextual Memory Layer (Pronoun / Context resolution)
+#   2. Strict Doctor Response Rule: 1-Line Answer OR Question (Not Both)
+#   3. Bi-directional Simulation: Patient Mode & Doctor Mode
 # ============================================================
 
 import os
@@ -19,7 +19,6 @@ ROOT = os.path.abspath(
 )
 SRC  = os.path.abspath(os.path.dirname(__file__))
 
-# Add both to path so agents/ is always found
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 if SRC not in sys.path:
@@ -151,6 +150,7 @@ def save_chat(
         entry = {
             "role"    : m.get("role",    ""),
             "content" : m.get("content", ""),
+            "action"  : m.get("action",  ""),
             "mode"    : m.get("mode",    mode)
         }
         meta = m.get("metadata", {})
@@ -158,13 +158,15 @@ def save_chat(
             try:
                 hall = meta.get("hallucination", {})
                 entry["metadata"] = {
-                    "question_type" : str(meta.get("question_type", "")),
-                    "cancer_type"   : str(meta.get("cancer_type",   "")),
-                    "is_followup"   : bool(meta.get("is_followup",  False)),
-                    "confidence"    : float(meta.get("confidence",  0.0)),
-                    "score"         : float(hall.get("score",       0.0)),
-                    "verdict"       : str(hall.get("verdict",       "")),
-                    "safety"        : str(hall.get("safety",        "LOW")),
+                    "question_type"     : str(meta.get("question_type", "")),
+                    "cancer_type"       : str(meta.get("cancer_type",   "")),
+                    "action"            : str(meta.get("action",        "")),
+                    "resolved_question" : str(meta.get("resolved_question", "")),
+                    "was_resolved"      : bool(meta.get("was_resolved", False)),
+                    "confidence"        : float(meta.get("confidence",  0.0)),
+                    "score"             : float(hall.get("score",       0.0)),
+                    "verdict"           : str(hall.get("verdict",       "")),
+                    "safety"            : str(hall.get("safety",        "LOW")),
                 }
             except Exception:
                 pass
@@ -240,6 +242,12 @@ st.markdown("""
 }
 .doctor-label { font-size:12px; color:#4caf50; font-weight:600; margin-bottom:3px; }
 
+.doctor-q-msg {
+    background:#223828; border-left:4px solid #8bc34a;
+    border-radius:10px; padding:13px 17px; margin:8px 0; color:#fff;
+}
+.doctor-q-label { font-size:12px; color:#8bc34a; font-weight:600; margin-bottom:3px; }
+
 .patient-ai-msg {
     background:#16243b; border-left:4px solid #00bcd4;
     border-radius:10px; padding:13px 17px; margin:8px 0; color:#fff;
@@ -282,6 +290,11 @@ st.markdown("""
     background:#1e1e3a; border:1px solid #9c27b0;
     border-radius:5px; padding:3px 9px; font-size:12px;
     color:#cc99ff; display:inline-block; margin-bottom:5px;
+}
+.mem-resolution-badge {
+    background:#142814; border:1px solid #4caf50;
+    border-radius:5px; padding:3px 8px; font-size:12px;
+    color:#81c784; display:inline-block; margin-top:4px;
 }
 .src-card {
     background:#1e2a1e; border-left:3px solid #ff9800;
@@ -333,24 +346,25 @@ def _new_sid() -> str:
 
 def init_session():
     if "initialized" not in st.session_state:
-        st.session_state.initialized    = True
-        st.session_state.agent          = None
-        st.session_state.session_id     = _new_sid()
-        st.session_state.messages       = []
-        st.session_state.total_queries  = 0
-        st.session_state.total_passed   = 0
-        st.session_state.all_scores     = []
-        st.session_state.patient_name   = "Patient"
-        st.session_state.doctor_name    = "Dr. Giridhari"
-        st.session_state.sim_mode       = "doctor"     # Default to Doctor mode or Patient mode
-        st.session_state.patient_case   = "lung_case"
-        st.session_state.last_cancer    = ""
-        st.session_state.turn_count     = 0
-        st.session_state.editing_idx    = None
-        st.session_state.quick_q        = None
-        st.session_state.page           = "chat"
-        st.session_state.view_hist_data = None
-        st.session_state.save_msg       = ""
+        st.session_state.initialized           = True
+        st.session_state.agent                 = None
+        st.session_state.session_id            = _new_sid()
+        st.session_state.messages              = []
+        st.session_state.total_queries         = 0
+        st.session_state.total_passed          = 0
+        st.session_state.all_scores            = []
+        st.session_state.patient_name          = "Patient"
+        st.session_state.doctor_name           = "Dr. Giridhari"
+        st.session_state.sim_mode              = "patient"     # 'patient', 'doctor', 'doctor_qa'
+        st.session_state.doctor_response_style = "auto"        # 'auto', 'answer_only', 'question_only'
+        st.session_state.patient_case          = "lung_case"
+        st.session_state.last_cancer           = ""
+        st.session_state.turn_count            = 0
+        st.session_state.editing_idx           = None
+        st.session_state.quick_q               = None
+        st.session_state.page                  = "chat"
+        st.session_state.view_hist_data        = None
+        st.session_state.save_msg              = ""
 
 
 # ==================================================
@@ -404,7 +418,6 @@ def process_question(
         st.session_state.messages      = st.session_state.messages[:edit_idx]
         st.session_state.total_queries = len(st.session_state.messages) // 2
 
-    # Identify user role tag based on mode
     user_role = "doctor" if mode in ["doctor", "doctor_qa"] else "patient"
     user_name = st.session_state.doctor_name if user_role == "doctor" else st.session_state.patient_name
 
@@ -416,19 +429,21 @@ def process_question(
         "mode"      : mode,
     })
 
-    spinner_label = "👤 Patient thinking..." if mode == "doctor" else "🩺 Analyzing with Oncology RAG..."
+    spinner_label = "👤 Patient thinking..." if mode == "doctor" else "🩺 Doctor AI reasoning (RAG + Memory)..."
 
     with st.spinner(spinner_label):
         try:
             result = agent.process(
-                question        = question,
-                session_id      = st.session_state.session_id,
-                mode            = mode,
-                patient_profile = active_case if mode == "doctor" else None
+                question              = question,
+                session_id            = st.session_state.session_id,
+                mode                  = mode,
+                patient_profile       = active_case if mode == "doctor" else None,
+                doctor_response_style = st.session_state.doctor_response_style
             )
             answer      = result.get("answer", "")
             qtype       = result.get("question_type", "general")
             cancer      = result.get("cancer_type", "")
+            action      = result.get("action", "answer")
 
             st.session_state.total_queries += 1
             st.session_state.turn_count    += 1
@@ -442,7 +457,7 @@ def process_question(
                 if not result.get("hallucination", {}).get("is_hallucinated", False):
                     st.session_state.total_passed += 1
 
-            # AI response role
+            # Determine response role display
             ai_role = "patient_ai" if mode == "doctor" else ("specialist" if mode == "doctor_qa" else "doctor")
             ai_name = active_case.get("name", "Patient AI") if mode == "doctor" else ("Oncology Specialist AI" if mode == "doctor_qa" else "Doctor AI")
 
@@ -450,6 +465,7 @@ def process_question(
                 "role"     : ai_role,
                 "name"     : ai_name,
                 "content"  : answer,
+                "action"   : action,
                 "metadata" : result,
                 "mode"     : mode,
             })
@@ -459,7 +475,7 @@ def process_question(
             st.session_state.messages.append({
                 "role"    : err_role,
                 "name"    : "Simulation Assistant",
-                "content" : f"An error occurred: {e}. Please ensure GROQ_API_KEY is configured.",
+                "content" : f"An error occurred: {e}. Please ensure GROQ_API_KEY is configured in Render.",
             })
 
     st.session_state.editing_idx = None
@@ -488,8 +504,8 @@ def render_sidebar():
         # ── SIMULATION MODE SELECTOR ──────────────────
         st.markdown("**🎭 Simulation Mode**")
         mode_options = {
-            "doctor"    : "🩺 Doctor (Ask Patient AI)",
-            "patient"   : "👤 Patient (Ask Doctor AI)",
+            "patient"   : "👤 Patient Mode (Ask Doctor AI)",
+            "doctor"    : "🩺 Doctor Mode (Interview Patient AI)",
             "doctor_qa" : "🔬 Clinical Copilot (Physician QA)"
         }
         
@@ -504,6 +520,25 @@ def render_sidebar():
         if selected_mode != current_mode:
             st.session_state.sim_mode = selected_mode
             st.rerun()
+
+        # ── DOCTOR RESPONSE BEHAVIOR (NOT BOTH RULE) ──
+        if st.session_state.sim_mode == "patient":
+            st.markdown("**⚙️ Doctor Response Rule**")
+            style_options = {
+                "auto"          : "🤖 Auto (1-Line Answer OR Question)",
+                "answer_only"   : "⚡ 1-Line Answer Only",
+                "question_only" : "❓ Clinical Question Only"
+            }
+            selected_style = st.selectbox(
+                "Doctor Style",
+                options = list(style_options.keys()),
+                format_func = lambda x: style_options[x],
+                index = list(style_options.keys()).index(st.session_state.doctor_response_style),
+                label_visibility = "collapsed"
+            )
+            if selected_style != st.session_state.doctor_response_style:
+                st.session_state.doctor_response_style = selected_style
+                st.rerun()
 
         # ── PATIENT CASE SELECTION (FOR DOCTOR MODE) ──
         if st.session_state.sim_mode == "doctor":
@@ -522,6 +557,19 @@ def render_sidebar():
             if chosen_key != st.session_state.patient_case:
                 st.session_state.patient_case = chosen_key
                 st.rerun()
+
+        st.divider()
+
+        # ── ACTIVE MEMORY INDICATOR ───────────────────
+        st.markdown("**🧠 Contextual Memory**")
+        if st.session_state.last_cancer:
+            st.markdown(
+                f"<div class='mem-badge'>🎯 Active Topic: <b>{st.session_state.last_cancer.upper()}</b></div>",
+                unsafe_allow_html=True
+            )
+            st.caption("Ask follow-ups like:\n• *'what is the treatment for this?'*\n• *'how long do patients survive with it?'*")
+        else:
+            st.caption("Memory tracks active cancer topic & resolves pronouns automatically.")
 
         st.divider()
 
@@ -626,12 +674,12 @@ def render_sidebar():
                 ]
             else:
                 quick_qs = [
-                    "What are early symptoms of lung cancer?",
-                    "How is stage 2 breast cancer treated?",
-                    "What is colorectal cancer survival rate?",
+                    "What is lung cancer?",
+                    "What is the treatment for this?",
+                    "What is the survival rate for this?",
+                    "How is breast cancer diagnosed?",
                     "What are common chemotherapy side effects?",
-                    "How does radiation therapy work?",
-                    "Is cancer hereditary or genetic?",
+                    "How to prevent colorectal cancer?",
                 ]
 
             for q in quick_qs:
@@ -645,7 +693,7 @@ def render_sidebar():
 
             st.divider()
 
-        st.caption("⚠️ For medical educational simulation only.")
+        st.caption("⚠️ Medical educational simulation only.")
 
 
 # ==================================================
@@ -654,13 +702,12 @@ def render_sidebar():
 
 def render_messages(agent):
 
-    mode = st.session_state.sim_mode
-
     for idx, msg in enumerate(st.session_state.messages):
 
         role    = msg.get("role", "")
         name    = msg.get("name", "")
         content = msg.get("content", "")
+        action  = msg.get("action", "answer")
         meta    = msg.get("metadata", {})
         is_edit = msg.get("is_edit", False)
 
@@ -744,10 +791,17 @@ def render_messages(agent):
         # ── DOCTOR AI RESPONSE (PATIENT MODE) ─────────
         elif role == "doctor":
             qtype  = meta.get("question_type", "")
-            is_fup = meta.get("is_followup",   False)
+            is_fup = meta.get("is_followup", False) or (action == "question")
 
-            css  = "reject-msg" if qtype == "non_medical" else ("followup-msg" if is_fup else "doctor-msg")
-            icon = "⚠️ MedBot" if qtype == "non_medical" else ("🔄 Doctor AI" if is_fup else "🩺 Doctor AI")
+            if qtype == "non_medical":
+                css  = "reject-msg"
+                icon = "⚠️ MedBot"
+            elif action == "question":
+                css  = "doctor-q-msg"
+                icon = "❓ Doctor AI (Question to Patient)"
+            else:
+                css  = "doctor-msg"
+                icon = "🩺 Doctor AI (1-Line Answer)"
 
             st.markdown(
                 f"<div class='{css}'>"
@@ -774,16 +828,18 @@ def render_messages(agent):
 
 def _render_meta(meta: dict, is_patient_ai: bool = False):
 
-    header_label = "📋 Clinical Simulation & Case Insights" if is_patient_ai else "📋 Response Details & RAG Verification"
+    header_label = "📋 Clinical Case Simulation Insights" if is_patient_ai else "📋 Medical RAG & Memory Details"
 
     with st.expander(header_label, expanded=False):
 
-        score    = meta.get("hallucination", {}).get("score", 0.0)
-        verdict  = meta.get("hallucination", {}).get("verdict", "")
-        cancer   = meta.get("cancer_type",       "")
-        resolved = meta.get("resolved_question", "")
-        original = meta.get("question",          "")
-        mem_ctx  = meta.get("memory_context",    "")
+        score        = meta.get("hallucination", {}).get("score", 0.0)
+        verdict      = meta.get("hallucination", {}).get("verdict", "")
+        cancer       = meta.get("cancer_type", "")
+        resolved     = meta.get("resolved_question", "")
+        original     = meta.get("question", "")
+        was_resolved = meta.get("was_resolved", False)
+        action       = meta.get("action", "answer")
+        mem_ctx      = meta.get("memory_context", "")
 
         c1, c2, c3 = st.columns(3)
         with c1:
@@ -794,22 +850,29 @@ def _render_meta(meta: dict, is_patient_ai: bool = False):
             else:
                 st.markdown(f"<div class='score-bad'>❌ {score}/5</div>", unsafe_allow_html=True)
         with c2:
-            st.metric("Inquiry Type", meta.get("question_type", "?").upper()[:12])
+            action_disp = "1-LINE ANSWER" if action == "answer" else ("QUESTION" if action == "question" else action.upper())
+            st.metric("Doctor Action", action_disp)
         with c3:
             st.metric("Confidence", meta.get("confidence", 0.0))
+
+        if was_resolved and resolved != original:
+            st.markdown(
+                f"<div class='mem-resolution-badge'>"
+                f"🧠 <b>Memory Coreference Resolved:</b> <i>'{original}'</i> → <b>'{resolved}'</b>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+        if cancer and cancer not in ["cancer", ""]:
+            st.markdown(f"<div class='mem-badge'>🎯 CANCER TOPIC: {cancer.upper()}</div>", unsafe_allow_html=True)
 
         if "PASS" in str(verdict):
             st.success(f"✅ {verdict}")
         elif "FAIL" in str(verdict):
             st.error(f"❌ {verdict}")
-        elif verdict:
-            st.info(f"ℹ️ {verdict}")
-
-        if cancer and cancer not in ["cancer", ""]:
-            st.markdown(f"<div class='mem-badge'>🎯 {cancer.upper()}</div>", unsafe_allow_html=True)
 
         if mem_ctx:
-            with st.expander("🧠 Conversation Memory"):
+            with st.expander("🧠 Conversation Memory History"):
                 st.text(mem_ctx)
 
         sources = meta.get("sources", [])
@@ -879,8 +942,8 @@ def page_chat(agent):
                 f"""<div class='doctor-msg'>
                 <b>🩺 Doctor AI:</b><br><br>
                 <b>{greeting}!</b> {"Welcome, " + pname + "!" if pname != "Patient" else "Welcome!"}<br><br>
-                I know that cancer concerns can feel overwhelming — <b>you are not alone</b>.
-                I am your dedicated oncology AI assistant, here to listen and support you with evidence-based information from 25 oncology textbooks.<br><br>
+                I am your dedicated oncology AI assistant backed by 25 oncology textbooks.
+                Ask me any question about cancer, symptoms, staging, or treatments — or tell me how you are feeling.<br><br>
                 <i>Please share what's on your mind. I am here for you.</i>
                 </div>""",
                 unsafe_allow_html=True
@@ -892,7 +955,7 @@ def page_chat(agent):
 
     # Input Box Placeholder based on Mode
     if mode == "doctor":
-        placeholder = f"Ask {active_case['name']} a question (e.g. 'When did the cough start?', 'Any blood in sputum?')..."
+        placeholder = f"Ask {active_case['name']} a clinical question (e.g. 'When did the cough start?', 'Any blood in sputum?')..."
     elif mode == "doctor_qa":
         placeholder = "Ask clinical oncology questions (e.g. 'Adjuvant therapy for Stage 3 colon cancer')..."
     else:
@@ -1045,7 +1108,6 @@ def page_view_chat():
         role    = msg.get("role", "")
         mname   = msg.get("name", "")
         content = msg.get("content", "")
-        meta    = msg.get("metadata", {})
 
         if role == "patient":
             st.markdown(f"<div class='patient-msg'><div class='patient-label'>👤 {mname or name}</div><div class='patient-text'>{content}</div></div>", unsafe_allow_html=True)
@@ -1070,7 +1132,7 @@ def main():
     st.markdown("""
     <div class='main-header'>
         <h1>🏥 Doctor-Patient Simulation</h1>
-        <p>Powered by Agentic RAG + LLaMA3 + 25 Oncology Textbooks</p>
+        <p>Powered by Agentic RAG + Memory Layer + LLaMA3 + 25 Oncology Textbooks</p>
         <p style='color:#888899;font-size:12px;'>
         ⚠️ For educational & training simulation only. Always consult a certified oncologist.
         </p>
@@ -1110,7 +1172,7 @@ def main():
         scores = st.session_state.all_scores
 
         st.metric("Interactions", total)
-        st.metric("Passed Hallucination Check", f"{passed}/{total}" if total > 0 else "0/0")
+        st.metric("Passed Verification", f"{passed}/{total}" if total > 0 else "0/0")
 
         if scores:
             avg = round(sum(scores)/len(scores), 2)
@@ -1123,21 +1185,21 @@ def main():
         st.markdown("### 🎭 Active Mode")
         mode = st.session_state.sim_mode
         if mode == "doctor":
-            st.info("🩺 **Doctor Mode Active**\nYou are the Doctor interviewing the simulated Cancer Patient.")
+            st.info("🩺 **Doctor Mode Active**\nYou are examining the simulated Patient AI.")
         elif mode == "doctor_qa":
-            st.info("🔬 **Clinical Copilot Active**\nPhysician decision support from 25 oncology textbooks.")
+            st.info("🔬 **Clinical Copilot Active**\nPhysician guideline decision support.")
         else:
-            st.info("👤 **Patient Mode Active**\nYou are the Patient consulting Doctor AI.")
+            st.info("👤 **Patient Mode Active**\nDoctor AI answers in 1-line or asks clinical questions.")
 
         st.divider()
 
         # Memory Status
         st.markdown("### 🧠 Active Memory")
         if st.session_state.last_cancer:
-            st.markdown(f"<div class='mem-badge'>🎯 {st.session_state.last_cancer.upper()}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='mem-badge'>🎯 TOPIC: <b>{st.session_state.last_cancer.upper()}</b></div>", unsafe_allow_html=True)
             st.caption("Active context tracked across consultation turns.")
         else:
-            st.caption("Context activates automatically as you discuss symptoms.")
+            st.caption("Memory activates automatically when cancer is mentioned.")
 
         st.divider()
 
@@ -1160,10 +1222,9 @@ def main():
         - 45,384 Knowledge Chunks
 
         **Capabilities:**
-        - Bi-directional Doctor-Patient Simulation
-        - In-character Patient AI Roleplay
-        - Compassionate Oncology Doctor AI
-        - Clinical Staging & Guidelines Copilot
+        - 🧠 Pronoun & Context Memory Layer
+        - ⚡ Strict 1-Line Answer OR Clinical Question
+        - 🎭 Bi-directional Simulation
         """)
 
 
