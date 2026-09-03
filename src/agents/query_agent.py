@@ -488,12 +488,12 @@ class QueryAgent:
 
         q = question.strip()
         explicit_pats = [
-            (r"this cancer",    cancer),
-            (r"the cancer",     cancer),
-            (r"this disease",   cancer),
-            (r"this condition", cancer),
-            (r"this type",      cancer),
-            (r"this tumor",     cancer),
+            (r"\bthis cancer\b",    cancer),
+            (r"\bthe cancer\b",     cancer),
+            (r"\bthis disease\b",   cancer),
+            (r"\bthis condition\b", cancer),
+            (r"\bthis type\b",      cancer),
+            (r"\bthis tumor\b",     cancer),
         ]
 
         for pat, rep in explicit_pats:
@@ -504,14 +504,14 @@ class QueryAgent:
                     return resolved
 
         contextual_pats = [
-            (r"(for|of|with|about|causes?|treating|diagnose)\s+this", r" " + cancer),
-            (r"(for|of|with|about|causes?|treating|diagnose)\s+it",   r" " + cancer),
-            (r"(for|of|with|about|causes?|treating|diagnose)\s+that", r" " + cancer),
-            (r"(is|can)\s+this", r" " + cancer),
-            (r"(is|can)\s+it",   r" " + cancer),
-            (r"(is|can)\s+that", r" " + cancer),
-            (r"what about this", "what about " + cancer),
-            (r"what about it",   "what about " + cancer),
+            (r"\b(for|of|with|about|causes?|treating|diagnose)\s+this\b", r"\1 " + cancer),
+            (r"\b(for|of|with|about|causes?|treating|diagnose)\s+it\b",   r"\1 " + cancer),
+            (r"\b(for|of|with|about|causes?|treating|diagnose)\s+that\b", r"\1 " + cancer),
+            (r"\b(is|can)\s+this\b", r"\1 " + cancer),
+            (r"\b(is|can)\s+it\b",   r"\1 " + cancer),
+            (r"\b(is|can)\s+that\b", r"\1 " + cancer),
+            (r"\bwhat about this\b", "what about " + cancer),
+            (r"\bwhat about it\b",   "what about " + cancer),
         ]
 
         for pat, rep in contextual_pats:
