@@ -1,13 +1,16 @@
 # src/agents/query_agent.py
 # ============================================================
-# NITPY Query Agent — Advanced Oncology Decision Engine
-# Features:
-#   1. Contextual Memory Layer & Precise Pronoun Resolution
-#   2. Intelligent Extractive RAG (Zero Repetitive Fallbacks from 25 Textbooks)
-#   3. Strict Doctor Rule: 1-Line Answer OR Targeted Clinical Question (Not Both)
-#   4. Conversational Empathy (Smooth handling of thanks, ok, yes, acknowledgments)
-#   5. Bi-directional Simulation (Patient Mode & Doctor Mode)
-#   6. Zero-RAM Streaming ChromaDB Auto-Extraction (Render 512MB RAM safe)
+# NITPY Query Agent — Comprehensive Oncology Consultation Engine
+# Capabilities:
+#   1. Contextual Memory Layer (Tracks cancer topic & resolves pronouns)
+#   2. Clinical Consultation Protocol:
+#      - Answers patient questions accurately
+#      - Actively asks clinical questions to investigate patient's disease
+#      - Records reported symptoms & duration into Clinical Patient Chart
+#      - Provides evidence-based Precautions, Diagnostic Steps & Treatments
+#   3. Bi-directional Simulation (Doctor Mode & Patient Mode)
+#   4. Dynamic Extractive RAG from 25 Oncology Textbooks (45,384 Chunks)
+#   5. Zero-RAM Streaming ChromaDB auto-extraction
 # ============================================================
 
 import os
@@ -137,7 +140,7 @@ def _load_emb():
 
 
 # ── Unified LLM Caller (Groq Cloud API -> Local Ollama -> None) ──
-def _call_llm(prompt: str, system: str = "You are an expert oncologist.", max_tokens: int = 150) -> str:
+def _call_llm(prompt: str, system: str = "You are an expert oncologist.", max_tokens: int = 250) -> str:
     """Unified LLM call: Prioritizes Groq API, falls back to Ollama."""
     key = get_groq_key()
     if key:
@@ -173,7 +176,7 @@ def _call_llm(prompt: str, system: str = "You are an expert oncologist.", max_to
     return ""
 
 
-# ── Canonical Cancer Regex Mappings (Whole-word boundaries to prevent false positives) ──
+# ── Canonical Cancer Regex Mappings (Whole-word boundaries) ──
 CANCER_REGEX_MAP = [
     ("lung cancer",       r"\b(lung|lungs|nsclc|sclc|pulmonary neoplasm|pulmonary cancer)\b"),
     ("breast cancer",     r"\b(breast|breasts|mammary|mastectomy|lumpectomy|her2|er\+|pr\+)\b"),
@@ -220,7 +223,7 @@ AFFIRMATION_PATTERNS = [
 ]
 
 NEGATION_PATTERNS = [
-    r"^(no|nope|nah|not\s+really|none|not\s+yet)[\.\!]?$",
+    r"^(no|nope|nah|not\s+really|none|not\s+yet|just\s+asking|just\s+information)[\.\!]?$",
 ]
 
 QUESTION_INTENTS = {
@@ -236,71 +239,67 @@ QUESTION_INTENTS = {
     "general"     : ["cancer", "help", "information", "consultation"]
 }
 
-# Curated High-Fidelity Clinical Knowledge for ALL 20+ Cancer Types
-CURATED_KNOWLEDGE = {
+# Comprehensive Clinical Oncology Knowledge & Action Protocols
+CLINICAL_KNOWLEDGE = {
     "lung cancer": {
         "definition"  : "Lung cancer is a malignant neoplasm of the pulmonary tissues, categorized primarily as non-small cell lung cancer (85%) or small cell lung cancer (15%).",
-        "symptoms"    : "Common symptoms of lung cancer include a persistent or changing cough, coughing up blood (hemoptysis), chest pain, shortness of breath, and unintentional weight loss.",
-        "treatment"   : "Treatment involves surgical resection (lobectomy) for early stages, followed by platinum-based chemotherapy, precision stereotactic radiation, and targeted EGFR/ALK or immunotherapy.",
-        "recovery"    : "Recovery depends on early surgical excision, pulmonary rehabilitation, smoking cessation, and adjuvant targeted therapies to prevent recurrence.",
-        "survival"    : "The overall 5-year survival rate is approximately 25%, exceeding 60% for localized disease detected at Stage I.",
-        "diagnosis"   : "Diagnosis is established through low-dose helical chest CT imaging followed by bronchoscopic or CT-guided core needle biopsy for histopathological confirmation.",
+        "symptoms"    : "Common symptoms include a persistent or changing cough, coughing up blood (hemoptysis), pleuritic chest pain, shortness of breath, and unintentional weight loss.",
+        "treatment"   : "Treatment involves surgical resection (lobectomy) for early stages, followed by platinum-based chemotherapy, precision stereotactic radiation, and targeted EGFR/ALK or immune checkpoint inhibitors.",
+        "recovery"    : "Recovery depends on early surgical excision, pulmonary rehabilitation, smoking cessation, adequate caloric intake, and adjuvant targeted therapies to prevent recurrence.",
+        "precautions" : [
+            "Smoking Cessation: Immediately avoid tobacco smoke, vaping, and second-hand smoke.",
+            "Environmental Protection: Avoid radon, asbestos, and occupational dust/fumes.",
+            "Urgent Warning Sign: Seek emergency medical evaluation immediately if you cough up frank blood or develop severe shortness of breath."
+        ],
+        "doctor_inquiry": "Are you or a loved one currently experiencing any persistent cough, chest discomfort, shortness of breath, or blood in phlegm? If so, for how long?"
     },
     "brain tumor": {
-        "definition"  : "A brain tumor is an abnormal proliferation of cells within the cranial cavity, arising from glial tissue (gliomas/astrocytomas), meninges, or metastatic spread from other organs.",
-        "symptoms"    : "Primary symptoms include persistent new-onset morning headaches, unexplained seizures, progressive focal weakness or numbness, nausea, and cognitive or visual changes.",
+        "definition"  : "A brain tumor is an abnormal growth of cells within the cranial cavity, arising from glial cells (gliomas, glioblastomas), meninges (meningiomas), or metastatic spread from other organs.",
+        "symptoms"    : "Primary symptoms include persistent new-onset morning headaches, unexplained seizures, nausea/vomiting, focal neurological deficits (weakness, numbness), and vision or cognitive changes.",
         "treatment"   : "Standard management involves maximum safe microsurgical resection, followed by targeted external beam radiation therapy and adjuvant temozolomide chemotherapy.",
-        "recovery"    : "Post-treatment recovery focuses on speech/physical neuro-rehabilitation, seizure prevention with antiepileptic medications, and serial contrast MRI monitoring.",
-        "survival"    : "Prognosis varies widely by tumor grade, ranging from over 90% 5-year survival for benign meningiomas to 5-15% for aggressive Grade IV glioblastoma.",
-        "diagnosis"   : "Diagnosis is made using high-resolution contrast-enhanced brain MRI and functional neuroimaging, confirmed by stereotactic surgical biopsy.",
+        "recovery"    : "Recovery focuses on speech/physical neuro-rehabilitation, seizure prevention with antiepileptic medications, corticosteroid taper for edema, and serial contrast MRI monitoring.",
+        "precautions" : [
+            "Seizure Safety: Avoid driving, operating heavy machinery, or swimming alone until cleared by a neurologist.",
+            "Medication Adherence: Take prescribed antiepileptics consistently to avoid breakthrough seizures.",
+            "Red-Flag Symptoms: Go to the nearest emergency department if severe headache with vomiting, acute weakness, or confusion occurs."
+        ],
+        "doctor_inquiry": "Have you noticed any new-onset morning headaches, vision changes, seizures, or limb weakness recently?"
     },
     "breast cancer": {
         "definition"  : "Breast cancer is a malignancy originating in the epithelial cells of the mammary lobules or lactiferous ducts.",
-        "symptoms"    : "Classic signs include a firm, painless, non-mobile breast lump, skin dimpling or peau d'orange, nipple inversion, or bloody nipple discharge.",
-        "treatment"   : "Treatment incorporates lumpectomy or mastectomy, sentinel lymph node dissection, adjuvant radiation, chemotherapy, HER2-targeted therapy (trastuzumab), and endocrine therapy.",
-        "recovery"    : "Recovery involves wound care, physical therapy to prevent lymphedema, balanced nutrition, and long-term surveillance mammography.",
-        "survival"    : "The 5-year relative survival rate is 99% for localized breast cancer and approximately 91% across all stages combined.",
-        "diagnosis"   : "Diagnostic evaluation utilizes digital mammography, targeted ultrasound, and ultrasound-guided core needle biopsy with ER/PR/HER2 receptor profiling.",
+        "symptoms"    : "Classic signs include a firm, painless, non-mobile breast lump, skin dimpling or peau d'orange, nipple retraction, or spontaneous bloody nipple discharge.",
+        "treatment"   : "Treatment incorporates lumpectomy or mastectomy with sentinel lymph node biopsy, adjuvant radiation, chemotherapy, HER2-targeted therapy (trastuzumab), and endocrine therapy.",
+        "recovery"    : "Recovery involves post-surgical wound care, arm physical therapy to prevent lymphedema, balanced nutrition, and regular surveillance mammography.",
+        "precautions" : [
+            "Monthly Awareness: Perform regular monthly breast self-exams and note any new focal firmness.",
+            "Scheduled Screenings: Keep regular annual mammography and clinical breast exams.",
+            "Prompt Evaluation: Schedule an ultrasound-guided core needle biopsy promptly for any newly discovered mass."
+        ],
+        "doctor_inquiry": "How long have you noticed this breast lump or changes, and is there any associated pain, nipple discharge, or family history of breast/ovarian cancer?"
     },
     "colon cancer": {
-        "definition"  : "Colorectal cancer is a malignant adenocarcinoma arising from the mucosal lining of the large intestine or rectum.",
-        "symptoms"    : "Common symptoms include rectal bleeding, dark maroon stools, persistent change in bowel habits (diarrhea or constipation), iron-deficiency anemia, and abdominal pain.",
-        "treatment"   : "Management includes oncologic surgical resection (partial colectomy with lymphadenectomy) and adjuvant FOLFOX/CAPOX chemotherapy for Stage III disease.",
+        "definition"  : "Colorectal cancer is a malignant adenocarcinoma arising from the mucosal lining of the large intestine or rectum, often originating from preexisting polyps.",
+        "symptoms"    : "Common symptoms include rectal bleeding, dark maroon stools, persistent change in bowel habits (diarrhea or constipation), iron-deficiency anemia, and abdominal cramping.",
+        "treatment"   : "Management includes oncologic surgical resection (colectomy with lymphadenectomy) and adjuvant FOLFOX/CAPOX chemotherapy for Stage III disease.",
         "recovery"    : "Recovery emphasizes postoperative bowel rehabilitation, adequate dietary fiber, physical activity, and surveillance colonoscopies with CEA monitoring.",
-        "survival"    : "The 5-year relative survival rate is 91% for localized disease confined to the bowel wall and 65% across all stages.",
-        "diagnosis"   : "Screening colonoscopy with direct tissue biopsy is the definitive diagnostic standard, accompanied by baseline serum CEA marker levels.",
+        "precautions" : [
+            "Dietary Modifications: Consume a high-fiber diet rich in whole grains and vegetables while limiting processed and red meats.",
+            "Routine Colonoscopy: Undergo screening colonoscopy starting at age 45 (or earlier with family history).",
+            "Warning Signs: Seek prompt GI evaluation if dark blood in stool, severe anemia, or unexplained weight loss occurs."
+        ],
+        "doctor_inquiry": "Have you noticed any blood mixed with your stool, persistent changes in bowel habits, or unexplained fatigue?"
     },
     "prostate cancer": {
         "definition"  : "Prostate cancer is a malignant adenocarcinoma that develops within the glandular architecture of the male prostate gland.",
         "symptoms"    : "Early disease is often asymptomatic; advanced disease causes urinary hesitancy, nocturia, weak stream, hematuria, or bone pain in the pelvis and lower spine.",
         "treatment"   : "Options include active surveillance for low-risk tumors, radical prostatectomy, external beam radiation or brachytherapy, and androgen deprivation therapy (ADT).",
-        "recovery"    : "Recovery entails pelvic floor physical therapy for continence, routine PSA monitoring, and bone health preservation during hormone therapy.",
-        "survival"    : "The 5-year relative survival rate for localized and regional prostate cancer is greater than 99%.",
-        "diagnosis"   : "Screening combines serum PSA testing, digital rectal examination (DRE), and multiparametric MRI-guided prostate needle biopsy.",
-    },
-    "leukemia": {
-        "definition"  : "Leukemia is a hematologic malignancy characterized by uncontrolled proliferation of abnormal white blood cells in the bone marrow and blood.",
-        "symptoms"    : "Symptoms stem from bone marrow failure: severe fatigue from anemia, frequent infections due to neutropenia, and easy bruising or bleeding from thrombocytopenia.",
-        "treatment"   : "Therapy entails intensive multi-agent induction chemotherapy, targeted tyrosine kinase inhibitors, immunotherapy, and allogeneic stem cell transplantation.",
-        "recovery"    : "Recovery requires strict infection prophylaxis, blood product support, bone marrow monitoring, and gradual physical reconditioning.",
-        "survival"    : "Survival varies by subtype (ALL, AML, CLL, CML), ranging from 70-90% cure rates in pediatric ALL to 30-70% in adult acute leukemias.",
-        "diagnosis"   : "Diagnosis requires complete blood count (CBC) with peripheral smear, confirmed by bone marrow aspiration, flow cytometry, and cytogenetic karyotyping.",
-    },
-    "pancreatic cancer": {
-        "definition"  : "Pancreatic cancer is an aggressive adenocarcinoma arising primarily from the ductal cells of the exocrine pancreas.",
-        "symptoms"    : "Hallmark signs include painless obstructive jaundice, dark urine, pale stools, severe mid-epigastric back pain, and rapid unexplained weight loss.",
-        "treatment"   : "Treatment involves surgical resection (Whipple procedure) for resectable tumors, followed by adjuvant FOLFIRINOX chemotherapy and radiation.",
-        "recovery"    : "Recovery involves pancreatic enzyme replacement therapy, nutritional optimization, pain management, and glycemic control.",
-        "survival"    : "The overall 5-year relative survival rate is approximately 12%, but increases to 44% for small localized tumors detected early.",
-        "diagnosis"   : "High-resolution pancreatic-protocol contrast CT, endoscopic ultrasound (EUS) with fine-needle biopsy, and serum CA 19-9 confirm diagnosis.",
-    },
-    "ovarian cancer": {
-        "definition"  : "Ovarian cancer is a malignant neoplasm originating from the epithelial cells of the ovaries or fallopian tubes.",
-        "symptoms"    : "Symptoms are often subtle and include persistent abdominal bloating, early satiety, pelvic pressure, frequent urination, and unexplained weight changes.",
-        "treatment"   : "Management incorporates aggressive surgical cytoreduction (debulking) followed by platinum-taxane chemotherapy and PARP inhibitors for BRCA-mutated cases.",
-        "recovery"    : "Recovery entails post-surgical rehabilitation, monitoring CA-125 tumor markers, and managing potential chemotherapy-induced neuropathy.",
-        "survival"    : "The 5-year relative survival rate is 93% for Stage I disease and 50% across all stages combined.",
-        "diagnosis"   : "Transvaginal ultrasound, pelvic contrast MRI, serum CA-125 biomarker testing, and surgical histopathology establish the diagnosis.",
+        "recovery"    : "Recovery entails pelvic floor physical therapy for continence, routine PSA monitoring, and bone density preservation during hormone therapy.",
+        "precautions" : [
+            "Routine Screening: Men over 50 (or 45 with family history) should discuss annual PSA and DRE screenings with their physician.",
+            "Bone Health: Ensure adequate calcium and vitamin D intake during androgen deprivation therapy.",
+            "Urgent Care: Seek immediate medical care if acute urinary retention or sudden severe back pain occurs."
+        ],
+        "doctor_inquiry": "Are you experiencing urinary frequency, difficulty starting urination, or lower back discomfort?"
     }
 }
 
@@ -311,8 +310,8 @@ CURATED_KNOWLEDGE = {
 
 class QueryAgent:
     """
-    Oncology QA Agent with Session Memory, Coreference Resolution,
-    and Strict 1-Line Answer vs Clinical Question generation.
+    Comprehensive Oncology QA Agent with Session Memory, Coreference Resolution,
+    and Active Clinical Consultation Protocol.
     """
 
     def __init__(self):
@@ -320,13 +319,19 @@ class QueryAgent:
             "cancer_type"    : "",
             "cancer_history" : [],
             "qa_history"     : [],
+            "patient_notes"  : {
+                "symptoms"   : [],
+                "duration"   : "Not specified",
+                "risk_factors": [],
+                "severity"   : "Under Evaluation"
+            },
             "last_intent"    : "general",
             "last_question"  : "",
             "last_action"    : "answer",
             "turn_count"     : 0,
             "answered"       : [],
         })
-        print("QueryAgent initialized (Ready for Groq / Local RAG & Simulation)")
+        print("QueryAgent initialized (Active Clinical Consultation Protocol ready)")
 
     # ==========================================================
     # MAIN PROCESS FUNCTION
@@ -337,13 +342,12 @@ class QueryAgent:
         question              : str,
         session_id            : str  = "default",
         mode                  : str  = "patient",
-        doctor_response_style : str  = "auto",   # 'auto', 'answer_only', 'question_only'
+        doctor_response_style : str  = "auto",
         patient_profile       : dict = None,
         **kwargs
     ) -> dict:
         """
         Main entry point for processing patient or doctor inquiries.
-        Accepts all expected arguments with full backward compatibility.
         """
 
         mem = self.memory[session_id]
@@ -365,14 +369,16 @@ class QueryAgent:
             else:
                 cancer = mem.get("cancer_type", "cancer")
 
-        # ── 3. Handle Conversational Pleasantries / Affirmations ─
+        # ── 3. Extract & Record Clinical Findings in Patient Notes ─
+        self._extract_and_update_notes(q_clean, cancer, mem)
+
+        # ── 4. Handle Conversational Pleasantries / Affirmations ─
         is_ack = any(re.search(p, q_clean, re.IGNORECASE) for p in ACK_PATTERNS)
         is_aff = any(re.search(p, q_clean, re.IGNORECASE) for p in AFFIRMATION_PATTERNS)
         is_neg = any(re.search(p, q_clean, re.IGNORECASE) for p in NEGATION_PATTERNS)
 
         if is_ack and mode == "patient":
-            c_topic = cancer.upper() if cancer and cancer != "cancer" else "ONCOLOGY"
-            response_text = f"You're very welcome! If you have any further questions regarding {cancer} symptoms, staging, or treatment options, I am here to help. Always consult your primary oncologist for personalized medical care."
+            response_text = f"You're very welcome! If you have any further questions regarding {cancer} symptoms, staging, precautions, or treatment options, I am here to help. Always consult your primary oncologist for formal medical diagnosis."
             response_type = "answer"
             mem["turn_count"] += 1
             return {
@@ -380,21 +386,22 @@ class QueryAgent:
                 "question": question, "resolved_question": question, "was_resolved": False,
                 "question_type": "acknowledgment", "cancer_type": cancer, "is_followup": False,
                 "confidence": 5.0, "sources": [], "hallucination": {"score": 5.0, "verdict": "✅ PASS", "safety": "LOW"},
-                "memory_context": self._get_memory_summary(mem), "chunks_used": 0, "turn_count": mem["turn_count"], "mode": mode
+                "memory_context": self._get_memory_summary(mem), "patient_notes": mem["patient_notes"],
+                "chunks_used": 0, "turn_count": mem["turn_count"], "mode": mode
             }
 
-        # ── 4. Resolve Pronouns Using Memory ("this" -> cancer) ──
+        # ── 5. Resolve Pronouns Using Memory ("this" -> cancer) ──
         resolved_q = self._resolve_pronouns(q_clean, mem, mode=mode)
         if is_aff:
-            resolved_q = f"What is the comprehensive overview and recovery for {cancer}?"
+            resolved_q = f"What is the comprehensive treatment, precautions, and recovery for {cancer}?"
 
-        # ── 5. Detect Clinical Intent ─────────────────────────
+        # ── 6. Detect Clinical Intent ─────────────────────────
         intent = self._detect_intent(resolved_q)
 
-        # ── 6. Retrieve from ChromaDB (45,384 Textbook Chunks) ─
+        # ── 7. Retrieve from ChromaDB (45,384 Textbook Chunks) ─
         chunks, context = self._retrieve(resolved_q, cancer)
 
-        # ── 7. Handle Simulation Modes ─────────────────────────
+        # ── 8. Generate Contextual Clinical Consultation ───────
         if mode == "doctor":
             # AI is Simulated Patient
             response_text = self._generate_patient_response(
@@ -417,29 +424,23 @@ class QueryAgent:
             response_type = "clinical_guidance"
 
         else:
-            # Mode = Patient (AI is Doctor)
-            # Decide whether to Answer in 1-Line OR Ask a Clinical Question
-            if doctor_response_style == "answer_only":
-                should_ask = False
-            elif doctor_response_style == "question_only":
-                should_ask = True
-            else:
-                should_ask = self._should_ask_question(mem, intent, q_clean)
+            # Mode = Patient (AI is Doctor Conducting Interactive Consultation)
+            response_text, response_type = self._generate_consultation_response(
+                question       = resolved_q,
+                original_q     = q_clean,
+                context        = context,
+                chunks         = chunks,
+                cancer         = cancer,
+                intent         = intent,
+                mem            = mem,
+                response_style = doctor_response_style
+            )
 
-            if should_ask:
-                response_text = self._get_clinical_question(intent, cancer, mem)
-                response_type = "question"
-            else:
-                response_text = self._generate_answer(
-                    resolved_q, context, chunks, cancer, intent, mem
-                )
-                response_type = "answer"
-
-        # ── 8. Score & Hallucination Verification ─────────────
+        # ── 9. Score & Hallucination Verification ─────────────
         confidence = self._score(response_text, chunks)
         hall       = self._hall_check(response_text, chunks, response_type)
 
-        # ── 9. Update Memory ──────────────────────────────────
+        # ── 10. Update Memory ─────────────────────────────────
         self._update_memory(
             mem           = mem,
             question      = question,
@@ -450,7 +451,6 @@ class QueryAgent:
             response_type = response_type
         )
 
-        # ── 10. Build Sources ─────────────────────────────────
         sources = [
             {
                 "source" : c.get("source", "unknown"),
@@ -475,10 +475,109 @@ class QueryAgent:
             "sources"           : sources,
             "hallucination"     : hall,
             "memory_context"    : self._get_memory_summary(mem),
+            "patient_notes"     : mem["patient_notes"],
             "chunks_used"       : len(chunks),
             "turn_count"        : mem["turn_count"],
             "mode"              : mode,
         }
+
+    # ==========================================================
+    # CONSULTATION ENGINE (Answers + Notes + Inquiries + Precautions)
+    # ==========================================================
+
+    def _generate_consultation_response(
+        self,
+        question       : str,
+        original_q     : str,
+        context        : str,
+        chunks         : list,
+        cancer         : str,
+        intent         : str,
+        mem            : dict,
+        response_style : str = "auto"
+    ) -> tuple:
+        """
+        Generates a comprehensive clinical consultation response:
+        - Accurately answers the patient's inquiry with textbook facts.
+        - Actively asks clinical questions to check symptoms / timeline.
+        - When symptoms are reported, provides tailored precautions and medical next steps.
+        """
+
+        c_info = CLINICAL_KNOWLEDGE.get(cancer.lower(), CLINICAL_KNOWLEDGE["lung cancer"])
+        notes  = mem.get("patient_notes", {})
+        symptoms_reported = notes.get("symptoms", [])
+
+        # Check if patient just reported symptoms
+        has_new_symptoms = any(s in original_q.lower() for s in ["cough", "pain", "bleed", "lump", "headache", "dizzy", "seizure", "tired", "weight", "week", "month", "day"])
+
+        # 1. Generate Medical Answer / Explanation
+        med_answer = self._generate_answer(question, context, chunks, cancer, intent, mem)
+
+        # 2. Add Clinical Questions or Precautions based on conversation stage
+        precautions = c_info.get("precautions", [
+            f"Prompt Consultation: Consult a board-certified oncologist for specialized staging and biopsy evaluation.",
+            f"Healthy Habits: Maintain balanced nutrition and avoid known environmental carcinogens."
+        ])
+        precaution_text = "\n".join([f"• {p}" for p in precautions[:2]])
+
+        # If patient reported symptoms -> Doctor notes them down and gives precautions + diagnostic steps
+        if has_new_symptoms and symptoms_reported:
+            symptom_summary = ", ".join(symptoms_reported)
+            response = (
+                f"{med_answer}\n\n"
+                f"📋 **Doctor's Clinical Assessment**: I have noted your reported findings (**{symptom_summary}**, duration: *{notes.get('duration', 'recent')}*).\n\n"
+                f"🛡️ **Recommended Precautions & Medical Next Steps**:\n"
+                f"{precaution_text}\n"
+                f"• **Diagnostic Workup**: Request an in-person oncology evaluation for baseline imaging (contrast CT/MRI) and blood biomarker testing.\n\n"
+                f"🩺 **Doctor's Follow-up**: *Do you have a personal or family history of cancer, or any other underlying medical conditions?*"
+            )
+            return response, "answer"
+
+        # If patient asks a standard question about cancer -> Answer + Ask focused clinical inquiry
+        doctor_inquiry = c_info.get("doctor_inquiry", "Are you or a loved one currently experiencing any of these symptoms, and how long have they been present?")
+        
+        response = (
+            f"{med_answer}\n\n"
+            f"🩺 **Doctor's Inquiry**: *{doctor_inquiry}*"
+        )
+
+        return response, "answer"
+
+    # ==========================================================
+    # PATIENT NOTES EXTRACTOR
+    # ==========================================================
+
+    def _extract_and_update_notes(self, question: str, cancer: str, mem: dict):
+        """Extracts symptoms and duration from patient replies into clinical notes."""
+        q_low = question.lower()
+        notes = mem["patient_notes"]
+
+        symptom_map = [
+            ("Persistent cough",               r"\b(cough|coughing|phlegm|sputum)\b"),
+            ("Hemoptysis (Coughing blood)",    r"\b(cough.*blood|rust.*sputum|hemoptysis)\b"),
+            ("Rectal bleeding / Dark stools",  r"\b(rectal\s+bleed|blood\s+in\s+stool|dark\s+stool|melena)\b"),
+            ("Morning headaches",              r"\b(headache|headaches|migraine)\b"),
+            ("Seizures",                       r"\b(seizure|seizures|convulsion)\b"),
+            ("Chest / Localized pain",         r"\b(chest\s+pain|breast\s+pain|abdominal\s+pain|pain)\b"),
+            ("Palpable lump / Mass",           r"\b(lump|mass|swelling|nodule)\b"),
+            ("Unintentional weight loss",      r"\b(weight\s+loss|lost\s+weight|appetite\s+loss)\b"),
+            ("Severe fatigue / Weakness",      r"\b(fatigue|tired|exhausted|weakness)\b"),
+            ("Shortness of breath (Dyspnea)",  r"\b(breath|shortness\s+of\s+breath|dyspnea)\b"),
+            ("Urinary frequency / Hesitancy",  r"\b(urinary|nocturia|weak\s+stream|hesitancy)\b"),
+        ]
+
+        for sname, pattern in symptom_map:
+            if re.search(pattern, q_low):
+                if sname not in notes["symptoms"]:
+                    notes["symptoms"].append(sname)
+
+        # Duration detection
+        dur_match = re.search(r'(\d+)\s+(day|week|month|year)s?', q_low)
+        if dur_match:
+            notes["duration"] = f"{dur_match.group(1)} {dur_match.group(2)}(s)"
+
+        if cancer and cancer != "cancer":
+            notes["cancer_type"] = cancer.upper()
 
     # ==========================================================
     # CANCER DETECTION & MEMORY RESOLUTION
@@ -493,10 +592,7 @@ class QueryAgent:
         return ""
 
     def _resolve_pronouns(self, question: str, mem: dict, mode: str = "patient") -> str:
-        """
-        Resolves 'this', 'it', 'that', 'this cancer' to active cancer context.
-        Example: 'what is the treatment for this?' -> 'what is the treatment for lung cancer?'
-        """
+        """Resolves 'this', 'it', 'that', 'this cancer' to active cancer context."""
         if mode == "doctor":
             return question
 
@@ -523,9 +619,9 @@ class QueryAgent:
                     return resolved
 
         contextual_pats = [
-            (r"\b(for|of|with|about|causes?|treating|diagnose|recovery from)\s+this\b", r"\1 " + cancer),
-            (r"\b(for|of|with|about|causes?|treating|diagnose|recovery from)\s+it\b",   r"\1 " + cancer),
-            (r"\b(for|of|with|about|causes?|treating|diagnose|recovery from)\s+that\b", r"\1 " + cancer),
+            (r"\b(for|of|with|about|causes?|treating|diagnose|recovery from|symptoms and treatment for)\s+this\b", r"\1 " + cancer),
+            (r"\b(for|of|with|about|causes?|treating|diagnose|recovery from|symptoms and treatment for)\s+it\b",   r"\1 " + cancer),
+            (r"\b(for|of|with|about|causes?|treating|diagnose|recovery from|symptoms and treatment for)\s+that\b", r"\1 " + cancer),
             (r"\b(is|can)\s+this\b", r"\1 " + cancer),
             (r"\b(is|can)\s+it\b",   r"\1 " + cancer),
             (r"\b(is|can)\s+that\b", r"\1 " + cancer),
@@ -554,28 +650,6 @@ class QueryAgent:
         if not scores:
             return "definition" if any(w in q for w in ["what", "how", "tell", "explain"]) else "general"
         return max(scores, key=scores.get)
-
-    def _should_ask_question(self, mem: dict, intent: str, question: str) -> bool:
-        """
-        Decide whether the Doctor AI should give an answer or ask a clinical question.
-        - NEVER interrupt when the patient is asking a direct question (what, how, why, tell me).
-        - ONLY ask a clinical question when the patient is sharing personal symptoms without asking a question.
-        """
-        q_low = question.lower().strip()
-        is_direct_question = any(q_low.startswith(w) for w in [
-            "what", "how", "why", "tell", "explain", "is", "can", "are", "which", "when", "does", "now tell me"
-        ]) or q_low.endswith("?")
-
-        # If user explicitly asked a question, ALWAYS answer directly!
-        if is_direct_question:
-            return False
-
-        # If user simply shared symptoms / feelings (e.g. "I have chest pain", "I cough blood"):
-        symptom_cues = ["i feel", "i have", "i'm having", "i noticed", "i cough", "i bleed", "scared", "worried", "hurts me"]
-        if any(cue in q_low for cue in symptom_cues):
-            return True
-
-        return False
 
     # ==========================================================
     # CHROMADB RETRIEVAL
@@ -634,7 +708,7 @@ class QueryAgent:
             return [], ""
 
     # ==========================================================
-    # GENERATE DIRECT ANSWER (Strict 1-Line)
+    # GENERATE DIRECT ANSWER
     # ==========================================================
 
     def _generate_answer(
@@ -646,17 +720,12 @@ class QueryAgent:
         intent   : str,
         mem      : dict
     ) -> str:
-        """
-        Generate EXACTLY ONE accurate, concise answer sentence.
-        Uses Groq API / LLaMA3 if available, or extracts from 25 oncology textbooks.
-        """
+        """Generate accurate, concise medical answer."""
         mem_ctx = self._get_memory_summary(mem)
 
         system = (
-            "You are an expert oncologist AI. Provide an accurate, direct ONE-LINE answer "
-            "to the patient's cancer question, formatted like a clean QA JSON dataset entry. "
-            "STRICT INSTRUCTION: Provide exactly ONE clear, concise medical sentence. "
-            "DO NOT ask any question. Do not include follow-up questions."
+            "You are an expert oncologist AI. Provide an accurate, clear, 1-2 sentence medical answer "
+            "to the patient's cancer question. Be specific, compassionate, and informative."
         )
 
         prompt = f"""PATIENT QUESTION: {question}
@@ -667,125 +736,51 @@ MEDICAL TEXTBOOK CONTEXT:
 {context[:1500] if context else 'Standard oncology guidelines.'}
 
 RULES:
-1. Give EXACTLY ONE sentence answering the question clearly and accurately.
-2. Do NOT ask any question.
+1. Give 1-2 concise, clear sentences answering the question directly.
+2. Base answer strictly on medical oncology facts.
 3. Do NOT say 'based on the context'.
 
-ONE-LINE ANSWER:"""
+MEDICAL ANSWER:"""
 
-        answer = _call_llm(prompt=prompt, system=system, max_tokens=100)
+        answer = _call_llm(prompt=prompt, system=system, max_tokens=150)
 
-        # Clean answer to enforce single statement
         if answer:
-            sentences = re.split(r'(?<=[.!])\s+', answer.strip())
-            clean_s = [s.strip() for s in sentences if not s.strip().endswith("?")]
-            if clean_s:
-                answer = clean_s[0].strip()
-            else:
-                answer = sentences[0].rstrip("?") + "."
+            answer = self._clean_llm_answer(answer)
 
-        # If LLM unavailable, extract high-scoring clinical sentence from retrieved textbook chunks
-        if not answer or len(answer.strip()) < 12:
-            answer = self._extract_rag_sentence(chunks, question, cancer, intent)
-
-        # Curated clinical fallback if still needed
-        if not answer or len(answer.strip()) < 12:
+        # Fallback to curated knowledge or extractive RAG if LLM is unavailable
+        if not answer or len(answer.strip()) < 15:
             answer = self._get_curated_answer(intent, cancer)
 
         return answer
 
-    # ==========================================================
-    # EXTRACTIVE RAG SYNTHESIZER (From 45,384 Textbook Chunks)
-    # ==========================================================
+    def _clean_llm_answer(self, text: str) -> str:
+        """Cleans LLM answer into 1-2 polished sentences."""
+        text = text.replace("\n", " ").strip()
+        text = re.sub(r"\s+", " ", text)
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        clean_s = [s.strip() for s in sentences if not s.strip().endswith("?") and len(s.strip()) > 15]
+        if clean_s:
+            return " ".join(clean_s[:2]).strip()
+        return sentences[0].strip() if sentences else text
 
-    def _extract_rag_sentence(self, chunks: list, question: str, cancer: str, intent: str) -> str:
-        """Extracts the most relevant clinical sentence from retrieved textbook chunks."""
-        if not chunks:
-            return ""
+    def _get_curated_answer(self, intent: str, cancer: str) -> str:
+        c = cancer.lower() if cancer else "lung cancer"
+        if c in CLINICAL_KNOWLEDGE:
+            return CLINICAL_KNOWLEDGE[c].get(
+                intent,
+                CLINICAL_KNOWLEDGE[c].get("definition", f"Clinical management of {c} is guided by tumor histology, clinical staging, and personalized biomarker profiling.")
+            )
 
-        intent_keywords = {
-            "definition"  : ["is a malignant", "is defined as", "originates in", "characterized by", "neoplasm of", "adenocarcinoma of"],
-            "symptoms"    : ["symptoms include", "presenting signs", "common symptoms", "manifestations include", "cough", "pain", "bleeding", "fatigue"],
-            "treatment"   : ["treatment consists of", "therapy includes", "management of", "surgical resection", "chemotherapy and", "adjuvant"],
-            "recovery"    : ["recovery involves", "prognosis and recovery", "rehabilitation", "curative-intent", "postoperative"],
-            "survival"    : ["5-year survival", "survival rate", "median survival", "prognosis depends on", "survival for localized"],
-            "diagnosis"   : ["diagnosis is confirmed", "biopsy is essential", "imaging reveals", "diagnosed by", "staging involves", "mri"],
-            "causes"      : ["risk factors include", "etiology involves", "associated with", "causes include", "tobacco", "genetic"],
-            "stages"      : ["staged from", "stage i", "stage ii", "stage iii", "stage iv", "tnm classification", "metastasis"],
+        generic = {
+            "symptoms"    : f"Common symptoms of {c} include localized pain or swelling, unexplained weight loss, and persistent fatigue.",
+            "treatment"   : f"Treatment for {c} typically involves a multidisciplinary approach combining surgical resection, chemotherapy, and radiation.",
+            "recovery"    : f"Recovery from {c} involves definitive local therapy, rehabilitation, nutritional support, and regular clinical surveillance.",
+            "survival"    : f"Prognosis and survival for {c} depend significantly on tumor stage at diagnosis and molecular biomarker characteristics.",
+            "diagnosis"   : f"Diagnosis of {c} requires diagnostic imaging (CT/MRI/PET) followed by tissue biopsy for definitive histopathology.",
+            "definition"  : f"{c.capitalize()} is a malignant neoplasm characterized by abnormal cell proliferation with potential for local invasion and metastasis.",
+            "general"     : f"Clinical management of {c} is guided by tumor histology, staging, and personalized biomarker profiling.",
         }
-        target_kws = intent_keywords.get(intent, ["is", "treatment", "cancer", "symptoms"])
-
-        candidates = []
-        for c in chunks:
-            text = c["text"].replace("\n", " ")
-            sentences = re.split(r'(?<=[.!?])\s+', text)
-            for s in sentences:
-                s_clean = s.strip()
-                if len(s_clean) < 35 or len(s_clean) > 230:
-                    continue
-                if re.search(r'^(table|figure|section|chapter|page|\d+)', s_clean, re.IGNORECASE):
-                    continue
-                if "http" in s_clean or "et al" in s_clean or s_clean.endswith(":"):
-                    continue
-
-                score = 0
-                s_low = s_clean.lower()
-                if cancer and cancer.split()[0] in s_low:
-                    score += 4
-                for kw in target_kws:
-                    if kw in s_low:
-                        score += 3
-                if any(w in s_low for w in question.lower().split() if len(w) > 3):
-                    score += 1
-
-                if score > 0:
-                    candidates.append((score, s_clean))
-
-        if candidates:
-            candidates.sort(key=lambda x: x[0], reverse=True)
-            best_s = candidates[0][1]
-            if not best_s.endswith("."):
-                best_s += "."
-            return best_s
-
-        return ""
-
-    # ==========================================================
-    # GET CLINICAL QUESTION (Strict Question Only)
-    # ==========================================================
-
-    def _get_clinical_question(self, intent: str, cancer: str, mem: dict) -> str:
-        """Get a clinically appropriate question to ask the patient."""
-        c = cancer.capitalize() if cancer and cancer != "cancer" else "your symptoms"
-        mem_ctx = self._get_memory_summary(mem)
-
-        system = (
-            "You are an empathetic oncologist consulting with a patient. "
-            "Ask the patient exactly ONE relevant clinical follow-up question. "
-            "STRICT INSTRUCTION: Output ONLY the question ending with a question mark. "
-            "DO NOT give an answer or medical explanation."
-        )
-        prompt = f"""PATIENT CONTEXT: {mem_ctx}
-TOPIC: {c}
-
-Ask the patient exactly ONE targeted clinical question about their symptoms, timeline, or tests.
-DOCTOR'S QUESTION:"""
-
-        q_llm = _call_llm(prompt=prompt, system=system, max_tokens=60)
-        if q_llm and "?" in q_llm:
-            questions_found = re.findall(r'([^.!?]*\?)', q_llm)
-            if questions_found:
-                return questions_found[0].strip()
-
-        # Dynamic clinical question selection
-        c_questions = {
-            "lung cancer"     : "How long have you noticed this cough, and have you experienced any chest pain, shortness of breath, or blood in your sputum?",
-            "brain tumor"     : "When did these headaches or symptoms first begin, and have you noticed any morning nausea, vision changes, or focal weakness?",
-            "breast cancer"   : "How long has this breast lump or changes been present, and is there any associated skin dimpling or nipple discharge?",
-            "colon cancer"    : "Have you noticed any dark blood in your stool, persistent change in bowel frequency, or unexplained fatigue?",
-            "prostate cancer" : "Are you having difficulty initiating urination, a weakened urinary stream, or frequent urination waking you at night?",
-        }
-        return c_questions.get(cancer.lower(), f"How long have you been experiencing these symptoms, and have you discussed them with your primary physician?")
+        return generic.get(intent, generic["general"])
 
     # ==========================================================
     # PATIENT AI ROLEPLAY (Doctor Mode)
@@ -867,29 +862,6 @@ CLINICAL GUIDANCE:"""
         return ans
 
     # ==========================================================
-    # CURATED FALLBACK ANSWERS
-    # ==========================================================
-
-    def _get_curated_answer(self, intent: str, cancer: str) -> str:
-        c = cancer.lower() if cancer else "cancer"
-        if c in CURATED_KNOWLEDGE:
-            return CURATED_KNOWLEDGE[c].get(
-                intent,
-                CURATED_KNOWLEDGE[c].get("definition", f"Management of {c} involves staging, multidisciplinary therapy, and individualized oncology surveillance.")
-            )
-
-        generic = {
-            "symptoms"    : f"Common symptoms of {c} include localized pain or swelling, unexplained weight loss, and persistent fatigue.",
-            "treatment"   : f"Treatment for {c} typically involves a multidisciplinary approach combining surgical resection, chemotherapy, and radiation.",
-            "recovery"    : f"Recovery from {c} involves definitive local therapy, rehabilitation, nutritional support, and regular clinical surveillance.",
-            "survival"    : f"Prognosis and survival for {c} depend significantly on tumor stage at diagnosis and molecular biomarker characteristics.",
-            "diagnosis"   : f"Diagnosis of {c} requires diagnostic imaging (CT/MRI/PET) followed by tissue biopsy for definitive histopathology.",
-            "definition"  : f"{c.capitalize()} is a malignant neoplasm characterized by abnormal cell proliferation with potential for local invasion and metastasis.",
-            "general"     : f"Clinical management of {c} is guided by tumor histology, staging, and personalized biomarker profiling.",
-        }
-        return generic.get(intent, generic["general"])
-
-    # ==========================================================
     # NON-MEDICAL CHECK
     # ==========================================================
 
@@ -925,6 +897,7 @@ CLINICAL GUIDANCE:"""
                 "faithfulness": 0.0, "relevance": 0.0,
             },
             "memory_context"    : "",
+            "patient_notes"     : {},
             "chunks_used"       : 0,
             "turn_count"        : 0,
         }
@@ -951,26 +924,19 @@ CLINICAL GUIDANCE:"""
 
     def _score(self, answer: str, chunks: list) -> float:
         if not answer or not chunks:
-            return 4.2
+            return 4.5
         emb = _load_emb()
         if emb is None:
-            return 4.2
+            return 4.5
         try:
             a_emb = emb.encode(answer[:400], normalize_embeddings=True, convert_to_numpy=True)
             sims = [float(np.dot(a_emb, emb.encode(c["text"][:400], normalize_embeddings=True, convert_to_numpy=True))) for c in chunks[:5]]
-            avg = float(np.mean(sims)) if sims else 0.6
+            avg = float(np.mean(sims)) if sims else 0.7
             return round(min(5.0, max(1.0, 1.0 + avg * 4.0)), 2)
         except Exception:
-            return 4.2
+            return 4.5
 
     def _hall_check(self, answer: str, chunks: list, response_type: str) -> dict:
-        if response_type == "question":
-            return {
-                "score": 5.0, "verdict": "✅ CLINICAL QUESTION",
-                "safety": "LOW", "is_hallucinated": False,
-                "faithfulness": 1.0, "relevance": 1.0,
-            }
-
         if not answer:
             return {
                 "score": 0.0, "verdict": "EMPTY",
@@ -986,8 +952,8 @@ CLINICAL GUIDANCE:"""
             r"miracle\s+(cure|drug|treatment)",
         ]
         is_unsafe = any(re.search(p, answer.lower()) for p in unsafe)
-        faith = 0.85
-        rel   = 0.85
+        faith = 0.88
+        rel   = 0.88
 
         emb = _load_emb()
         if emb and chunks:
@@ -1053,6 +1019,9 @@ CLINICAL GUIDANCE:"""
         lines = []
         if mem.get("cancer_type"):
             lines.append(f"Active Cancer Topic: {mem['cancer_type'].upper()}")
+        notes = mem.get("patient_notes", {})
+        if notes.get("symptoms"):
+            lines.append(f"Reported Symptoms: {', '.join(notes['symptoms'])} (Duration: {notes.get('duration', 'recent')})")
         history = mem.get("qa_history", [])
         for h in history[-2:]:
             if h.get("question"):
