@@ -439,10 +439,26 @@ def render_sidebar():
             "name_input",
             value            = st.session_state.patient_name,
             label_visibility = "collapsed",
-            placeholder      = "Your name..."
+            placeholder      = "Enter your name..."
         )
-        if name_input and name_input != st.session_state.patient_name:
+        if name_input:
             st.session_state.patient_name = name_input
+
+        st.divider()
+
+        # ── API CONFIGURATION ─────────────────────────
+        st.markdown("**🔑 Groq API Key (Optional)**")
+        current_key = os.environ.get("GROQ_API_KEY", "")
+        key_input = st.text_input(
+            "groq_api_key_ui",
+            value            = current_key,
+            type             = "password",
+            label_visibility = "collapsed",
+            placeholder      = "Paste Groq API Key (gsk_...)"
+        )
+        if key_input and key_input.strip() != current_key:
+            os.environ["GROQ_API_KEY"] = key_input.strip()
+            st.success("✅ Groq API Key set!")
 
         st.divider()
 
